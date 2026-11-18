@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""
+ZeroStack Automated Submodule Sync & Drift Sentinel
+===================================================
+Automatically synchronizes Git submodules from creativeuncommons upstream repos,
+executes the full regression suite, and gates pointer advancement:
+
+1. Updates submodules: packages/ZeroMCP, HyperGate, ZeroLeak, ZeroLoop, AgentTrace.
+2. Audits Zero 3rd-party dependencies across all packages.
+3. Executes 25 integration tests (Phases 1 through 5).
+4. Verifies fault injection & deterministic crash recovery.
+5. Performs JSON-RPC / MCP wire contract drift detection.
+6. Enforces the < 5.0 ms pipeline turn latency budget.
+7. Only advances submodule commits if 100% of gates pass.
+
+Usage:
+    python3 scripts/submodule-sync [--commit]
+"""
+
+import sys
+import os
+import subprocess
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent
+
+
+def run_cmd(cmd, cwd=REPO_ROOT, check=True):
+    res = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if check and res.returncode != 0:
+        print(f"❌ Command failed: {' '.join(cmd)}")
+        print(res.stderr)
+        sys.exit(res.returncode)
+    return res
+
+
+def main():
+    print("=" * 70)
+    print("🔄 ZeroStack Submodule Sync & Automated Drift Sentinel")
+    print("=" * 70)
+
+    # 1. Fetch and update submodules to latest main
+    print("\n[1/3] Pulling latest upstream commits for all 5 submodules...")
+    run_cmd(["git", "submodule", "update", "--remote", "--merge"])
+    diff = run_cmd(["git", "status", "--porcelain", "packages/"], check=False).stdout.strip()
+
+    if not diff:
+        print("  ✅ All submodules are already at latest upstream commits.")
+    else:
+        print("  📦 Detected upstream updates:")
+        for line in diff.split("\n"):
+            print(f"     {line}")
+
+    # 2. Run the full ZeroStack release gatekeeper
+    print("\n[2/3] Executing ZeroStack Release Gatekeeper Audit...")
+    audit_res = run_cmd([sys.executable, str(SCRIPT_DIR / "zerostack-check"), "--audit"], check=False)
+    print(audit_res.stdout)
+
+    if audit_res.returncode != 0:
+        print("\n❌ SUBMODULE AUDIT FAILED! Drift or performance regression detected.")
+        print("   Rolling back submodule changes to prevent breaking ZeroStack...")
+        run_cmd(["git", "submodule", "update", "--force"])
+        sys.exit(1)
+
+    print("\n[3/3] Drift Sentinel Verified: All 5 submodules conform 100% to ZeroStack contracts.")
+
+    if "--commit" in sys.argv:
+        if diff:
+            print("\n💾 Committing submodule pointer advance...")
+            run_cmd(["git", "add", "packages/"])
+            run_cmd(["git", "commit", "-m", "chore(submodules): auto-sync upstream packages with verified drift gate"])
+            print("  ✅ Committed submodule pointer advance.")
+        else:
+            print("  ℹ️ Nothing to commit.")
+
+    print("\n🎉 SUBMODULE SYNC & DRIFT AUDIT COMPLETE: ZeroStack is healthy.")
+
+
+if __name__ == "__main__":
+    main()

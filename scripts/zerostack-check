@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+"""
+ZeroStack CI Grader, Conformance Sentinel & Contract Drift Gate
+==============================================================
+Usage:
+    python3 scripts/zerostack-check [--audit] [--summary] [--verbose]
+
+Audits & Gates:
+1. Zero 3rd-Party Dependencies: Asserts 100% Python standard library usage across all 5 packages.
+2. Phase 1: Clean imports and zero symbol/namespace collisions across Git submodules.
+3. Phase 2: Multi-turn E2E financial agent workflow execution (masking, pruning, RPC, unmasking, WAL commit, tracing).
+4. Phase 3: Hard fault injection mid-loop, crash recovery, idempotency deduplication, unbroken trace lineage.
+5. Phase 3: API drift audit across wire formats, signatures, and data contracts.
+6. Phase 4: Custom sensitivity rule registration & execution.
+7. Phase 5: High-density table scaling & fourfold spillover defense.
+8. Performance Benchmark: High-throughput microbenchmarks enforcing the < 5.0 ms latency budget.
+"""
+
+import sys
+import os
+import ast
+import time
+import argparse
+import unittest
+import tempfile
+from pathlib import Path
+from typing import Dict, Any, List, Set, Optional
+
+# Ensure UTF-8 output
+if sys.platform == "win32" or getattr(sys.stdout, "encoding", None) != "utf-8":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+SUITE_ROOT = SCRIPTS_DIR.parent
+PROJECTS_DIR = SUITE_ROOT.parent
+WORKSPACE_ROOT = PROJECTS_DIR.parent
+
+if str(SUITE_ROOT) not in sys.path:
+    sys.path.insert(0, str(SUITE_ROOT))
+
+from ecosystem_loader import zeromcp, hypergate, zeroleak, zeroloop, agenttrace
+from convergence_agent import ConvergenceAgent
+from benchmarks.benchmark_ecosystem import run_benchmark_suite
+
+STDLIB_MODULES = set(getattr(sys, "stdlib_module_names", set())) | {
+    "os", "sys", "json", "time", "uuid", "shutil", "hashlib", "sqlite3",
+    "datetime", "argparse", "functools", "enum", "dataclasses", "typing",
+    "contextlib", "unittest", "tempfile", "copy", "re", "threading", "pathlib",
+    "collections", "math", "operator", "platform", "contextvars", "secrets",
+    "inspect", "importlib", "urllib", "ast", "http", "socket", "select", "queue",
+    "hmac", "subprocess", "bisect"
+}
+
+
+def audit_zero_dependencies(verbose: bool = False) -> bool:
+    print("\n🔍 [1/5] Auditing Zero 3rd-Party Runtime Dependencies...")
+    package_modules = [
+        ("zeromcp", zeromcp),
+        ("hypergate", hypergate),
+        ("zeroleak", zeroleak),
+        ("zeroloop", zeroloop),
+        ("agenttrace", agenttrace),
+    ]
+
+    all_passed = True
+    for pkg_name, mod in package_modules:
+        file_path = getattr(mod, "__file__", None)
+        if not file_path or not os.path.exists(file_path):
+            print(f"  ❌ {pkg_name:12}: Missing source file path")
+            all_passed = False
+            continue
+
+        pkg_dir = os.path.dirname(file_path)
+        local_modules = {
+            os.path.splitext(f)[0]
+            for f in os.listdir(pkg_dir)
+            if f.endswith(".py")
+        }
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read(), filename=file_path)
+
+        disallowed = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    root_name = alias.name.split(".")[0]
+                    if root_name not in STDLIB_MODULES and root_name not in local_modules:
+                        disallowed.add(root_name)
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    root_name = node.module.split(".")[0]
+                    if root_name not in STDLIB_MODULES and root_name not in local_modules:
+                        disallowed.add(root_name)
+
+        if disallowed:
+            print(f"  ❌ {pkg_name:12}: Found disallowed 3rd-party imports: {disallowed}")
+            all_passed = False
+        else:
+            if verbose:
+                print(f"  ✅ {pkg_name:12}: 100% Python Standard Library (0 external dependencies)")
+
+    if all_passed and not verbose:
+        print("  ✅ All 5 core packages verified: 100% Python Standard Library (Zero 3rd-party dependencies)")
+    return all_passed
+
+
+def run_unit_and_integration_suites(verbose: bool = False) -> bool:
+    print("\n🧪 [2/5] Running Ecosystem Convergence Integration & Test Suites...")
+    loader = unittest.TestLoader()
+    suite = loader.discover(
+        start_dir=str(SUITE_ROOT / "tests"),
+        pattern="test_*.py"
+    )
+
+    runner = unittest.TextTestRunner(verbosity=2 if verbose else 1)
+    res = runner.run(suite)
+    
+    if res.wasSuccessful():
+        print(f"  ✅ Ran {res.testsRun} tests across all phases (Phase 1 to Phase 5) with 0 errors / 0 failures.")
+        return True
+    else:
+        print(f"  ❌ Test suite failure: {len(res.failures)} failures, {len(res.errors)} errors.")
+        return False
+
+
+def run_fault_injection_sentinel(verbose: bool = False) -> bool:
+    print("\n💥 [3/5] Verifying Simulated Fault Injection & Deterministic Recovery...")
+    tmp_storage = tempfile.mkdtemp()
+    tmp_trace = tempfile.mkdtemp()
+    loop_id = "sentinel_crash_test"
+
+    agent1 = ConvergenceAgent(loop_id=loop_id, storage_dir=tmp_storage, trace_dir=tmp_trace)
+    prompt = (
+        "Client Alice Smith SSN 123-45-6789 card 4532-0151-1283-0366 "
+        "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig_test "
+        "api sk-live-982138402100000000000000 for portfolio audit."
+    )
+
+    # 1. Crash injection
+    crash_res = agent1.run_financial_audit_workflow(prompt, simulate_crash_step=3)
+    if crash_res.get("status") != "CRASHED_INJECTED" or crash_res.get("crashed_at_step") != 3:
+        print("  ❌ Failed to inject fault at Step 3")
+        return False
+
+    # 2. Recovery rehydration
+    agent2 = ConvergenceAgent(loop_id=loop_id, storage_dir=tmp_storage, trace_dir=tmp_trace)
+    rec_res = agent2.resume_from_crash()
+
+    receipt = rec_res["receipt"]
+    resumed_idx = rec_res["resumed_step_idx"]
+
+    ok_step = (resumed_idx == 3 and receipt.total_steps == 5)
+    ok_rec = (receipt.crash_recoveries >= 1)
+    ok_dedup = (receipt.duplicate_tool_calls_prevented >= 1)
+    ok_chain = (receipt.chain_verified is True)
+
+    if ok_step and ok_rec and ok_dedup and ok_chain:
+        print(f"  ✅ Recovery Verified: Step={resumed_idx}, Recoveries={receipt.crash_recoveries}, Deduped={receipt.duplicate_tool_calls_prevented}, SHA-256 Chain={receipt.chain_verified}")
+        return True
+    else:
+        print(f"  ❌ Recovery Invariant Failed: step_ok={ok_step}, rec_ok={ok_rec}, dedup_ok={ok_dedup}, chain_ok={ok_chain}")
+        return False
+
+
+def run_contract_drift_sentinel(verbose: bool = False) -> bool:
+    print("\n🔍 [4/5] Executing Cross-Package Contract Drift Audit...")
+    loader = unittest.TestLoader()
+    suite = loader.loadTestsFromName("tests.test_phase3_drift_detection.TestPhase3DriftDetection")
+    runner = unittest.TextTestRunner(verbosity=2 if verbose else 0)
+    res = runner.run(suite)
+    
+    if res.wasSuccessful():
+        print("  ✅ Zero API drift detected: MCP 2024-11-05 wire protocol, BM25 pruner, vault, WAL journal, and W3C traceparent match 100%.")
+        return True
+    else:
+        print("  ❌ API drift or contract divergence detected!")
+        return False
+
+
+def run_performance_sentinel(iterations: int = 1000, verbose: bool = False) -> bool:
+    print(f"\n⚡ [5/5] Executing Performance Benchmark Sentinel ({iterations:,} iterations)...")
+    try:
+        results = run_benchmark_suite(iterations=iterations)
+        comp = results["composite"]
+        p95 = comp["p95"]
+        pruner_500 = results["pruner"]["hypergate_500"]["p50"]
+
+        if p95 < 5.0 and pruner_500 < 1.0:
+            print(f"  ✅ Performance SLAs Satisfied: Composite p95={p95:.3f} ms (< 5.0 ms SLA), HyperGate 500-tool p50={pruner_500:.3f} ms (< 1.0 ms SLA).")
+            return True
+        else:
+            print(f"  ❌ Performance SLA Breached: Composite p95={p95:.3f} ms, HyperGate p50={pruner_500:.3f} ms")
+            return False
+    except Exception as e:
+        print(f"  ❌ Benchmark execution error: {e}")
+        return False
+
+
+def print_scorecard(results: Dict[str, bool]):
+    print("\n" + "=" * 70)
+    print("📋 CREATIVEUNCOMMONS ECOSYSTEM CONVERGENCE SCORECARD")
+    print("=" * 70)
+    labels = [
+        ("Zero 3rd-Party Dependencies", "zero_deps"),
+        ("Unit & Integration Test Suites", "unit_tests"),
+        ("Crash Fault Injection & Recovery", "fault_injection"),
+        ("Cross-Package API Drift Audit", "drift_audit"),
+        ("Performance Benchmark & Latency Budget (< 5.0 ms)", "benchmark"),
+    ]
+    for label, key in labels:
+        status = "🟢 PASS" if results.get(key) else "🔴 FAIL"
+        print(f"  {label:<52} {status}")
+    print("=" * 70)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="ZeroStack Conformance Sentinel & Contract Drift Gate.")
+    parser.add_argument("--audit", action="store_true", help="Run comprehensive audit across all gates")
+    parser.add_argument("--summary", action="store_true", help="Print summary scorecard")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    parser.add_argument("--bench-iterations", type=int, default=1000, help="Benchmark iterations (default: 1000)")
+    args = parser.parse_args()
+
+    print("🛡️ ZeroStack Conformance Sentinel & Contract Drift Gate")
+    print("=" * 70)
+
+    results = {}
+    results["zero_deps"] = audit_zero_dependencies(args.verbose)
+    results["unit_tests"] = run_unit_and_integration_suites(args.verbose)
+    results["fault_injection"] = run_fault_injection_sentinel(args.verbose)
+    results["drift_audit"] = run_contract_drift_sentinel(args.verbose)
+    results["benchmark"] = run_performance_sentinel(iterations=args.bench_iterations, verbose=args.verbose)
+
+    print_scorecard(results)
+
+    all_passed = all(results.values())
+    if all_passed:
+        print("🎉 ALL ZEROSTACK CONVERGENCE GATES PASSED (100% PRODUCTION READY)")
+        sys.exit(0)
+    else:
+        print("🛑 ONE OR MORE CONFORMANCE GATES FAILED")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

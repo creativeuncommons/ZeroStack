@@ -1,0 +1,15 @@
+[submodule "packages/ZeroMCP"]
+	path = packages/ZeroMCP
+	url = https://github.com/creativeuncommons/ZeroMCP.git
+[submodule "packages/HyperGate"]
+	path = packages/HyperGate
+	url = https://github.com/creativeuncommons/HyperGate.git
+[submodule "packages/ZeroLeak"]
+	path = packages/ZeroLeak
+	url = https://github.com/creativeuncommons/ZeroLeak.git
+[submodule "packages/ZeroLoop"]
+	path = packages/ZeroLoop
+	url = https://github.com/creativeuncommons/ZeroLoop.git
+[submodule "packages/AgentTrace"]
+	path = packages/AgentTrace
+	url = https://github.com/creativeuncommons/AgentTrace.git
