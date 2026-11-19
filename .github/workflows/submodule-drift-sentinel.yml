@@ -26,24 +26,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Sync Submodules & Audit Drift
+      - name: Sync Submodules & Audit Drift Gate
         run: |
           chmod +x scripts/submodule-sync scripts/zerostack-check
-          python3 scripts/submodule-sync --commit
-
-      - name: Create Pull Request on Verified Upstream Update
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore(submodules): auto-sync upstream packages with verified drift gate"
-          title: "chore: auto-sync submodules (ZeroStack Drift Sentinel Verified)"
-          body: |
-            ### Automated Submodule Sync & Drift Conformance Report
-            All 5 core packages were pulled from their respective `main` branches and verified against the ZeroStack Conformance Sentinel:
-            - **Zero 3rd-Party Dependencies**: 100% Python Standard Library
-            - **Unit & Integration Tests**: 25/25 passed across all phases
-            - **Fault Injection**: Step 3 crash recovery verified
-            - **Contract Drift**: Zero API schema divergence
-            - **Performance Budget**: Turn overhead strictly < 5.0 ms SLA
-          branch: auto-sync-submodules
-          base: main
+          python3 scripts/submodule-sync
+          if [ -n "$(git status --porcelain packages/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add packages/
+            git commit -m "chore(submodules): auto-sync upstream packages with verified drift gate"
+            git push origin main
+          fi
