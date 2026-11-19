@@ -8,3 +8,9 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Internal Development Tooling & Byzantine Review Sentinels
+*review_consensus*
+*byzantine*
+consensus_reports/
+scratch/
