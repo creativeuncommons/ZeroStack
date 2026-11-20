@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "creativeuncommons-zerostack"
+version = "1.0.0"
+authors = [
+    { name = "CreativeUnCommons Engineering", email = "oss@creativeuncommons.org" }
+]
+description = "Zero-Dependency Enterprise Agent Infrastructure: Sub-millisecond PII Firewall, BM25 Tool Pruning, MCP Server, Durable WAL Loops, and W3C Tracing."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+keywords = ["agent", "mcp", "pii-firewall", "tool-pruning", "durable-execution", "tracing", "otlp", "zero-dependency"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+    "Topic :: System :: Monitoring"
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/creativeuncommons/ZeroStack"
+Repository = "https://github.com/creativeuncommons/ZeroStack.git"
+Issues = "https://github.com/creativeuncommons/ZeroStack/issues"
+
+[project.scripts]
+zerostack = "zerostack.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["zerostack*"]

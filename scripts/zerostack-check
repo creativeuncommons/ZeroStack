@@ -13,7 +13,8 @@ Audits & Gates:
 5. Phase 3: API drift audit across wire formats, signatures, and data contracts.
 6. Phase 4: Custom sensitivity rule registration & execution.
 7. Phase 5: High-density table scaling & fourfold spillover defense.
-8. Performance Benchmark: High-throughput microbenchmarks enforcing the < 5.0 ms latency budget.
+8. Phase 6: Multi-threaded high-concurrency, 2,000-tool scale, crash rehydration, and RSS leak audits.
+9. Performance Benchmark: High-throughput microbenchmarks enforcing the < 5.0 ms latency budget.
 """
 
 import sys
@@ -121,7 +122,7 @@ def run_unit_and_integration_suites(verbose: bool = False) -> bool:
     res = runner.run(suite)
     
     if res.wasSuccessful():
-        print(f"  ✅ Ran {res.testsRun} tests across all phases (Phase 1 to Phase 5) with 0 errors / 0 failures.")
+        print(f"  ✅ Ran {res.testsRun} tests across all phases (Phase 1 to Phase 6) with 0 errors / 0 failures.")
         return True
     else:
         print(f"  ❌ Test suite failure: {len(res.failures)} failures, {len(res.errors)} errors.")

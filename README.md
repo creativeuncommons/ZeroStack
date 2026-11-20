@@ -14,7 +14,39 @@
 4. **ZeroLoop** (`packages/ZeroLoop`): Event-sourced durable execution state machine with commit-before-step SQLite WAL journaling & crash recovery.
 5. **AgentTrace** (`packages/AgentTrace`): W3C distributed tracing, trajectory telemetry, and parent-child span propagation.
 
-> **Looking for quick integration?** See [QUICKSTART.md](QUICKSTART.md) for the **5-Minute Clone & Run guide**, the **15-line minimal drop-in snippet**, and adapters for **LangChain, CrewAI, and native Python loops**.
+> **Looking for quick integration?** See [QUICKSTART.md](QUICKSTART.md) for the **5-Minute Clone & Run guide** and [ENTERPRISE_PLAYBOOK.md](ENTERPRISE_PLAYBOOK.md) for the **Enterprise Architecture, Market Moat Matrix vs. Presidio/LiteLLM/Langfuse, and Turnkey 3-Line Drop-in Adapters**.
+
+---
+
+## 🚀 Turnkey Day 1 Enterprise Quickstart
+
+ZeroStack requires **zero external dependencies** and installs immediately in any Python 3.10+ environment:
+
+```bash
+# 1. Install or clone
+pip install git+https://github.com/creativeuncommons/ZeroStack.git
+
+# 2. Run 10-point enterprise pre-flight health audit (< 100 ms)
+python3 -m zerostack.doctor
+```
+
+### 3-Line Turnkey Drop-In Middleware
+
+```python
+from openai import OpenAI
+from zerostack import wrap_openai
+
+# Wrap any existing OpenAI client in 1 line
+client = wrap_openai(OpenAI())
+
+# Outbound prompts are automatically sanitized of PII, tools are pruned via BM25, 
+# distributed W3C traces are captured, and responses are transparently unmasked!
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Check ledger for Alice (SSN: 123-45-6789)."}],
+    tools=enterprise_tools
+)
+```
 
 ---
 
